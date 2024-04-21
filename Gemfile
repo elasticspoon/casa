@@ -65,6 +65,7 @@ group :development, :test do
   gem "rswag-specs"
   gem "shoulda-matchers"
   gem "standard", "~> 1.31.0"
+  gem "parallel_tests"
 end
 
 group :development do

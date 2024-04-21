@@ -13,10 +13,15 @@ on:
 
 jobs:
   rspec:
+    name: RSpec Groups ${{ matrix.ci_job_index }}
     runs-on: ubuntu-latest
     env:
       RAILS_ENV: test
-
+      BUNDLE_WITHOUT: "development"
+      CI_TOTAL_JOBS: ${{ matrix.ci_total_jobs }}
+      CI_JOB_INDEX: ${{ matrix.ci_job_index }}
+      GROUPS_COMMA: ${{ join(fromJSON(matrix.ci_job_index), ',') }}
+      GROUPS_UNDERSCORE: ${{ join(fromJSON(matrix.ci_job_index), '_') }}
     services:
       db:
         image: postgres:14.8
@@ -29,6 +34,20 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+    strategy:
+      fail-fast: false
+      matrix:
+        # Set N number of parallel jobs you want to run.
+        # Normally equal to the number of CPU cores but in this case relates to the total number of test groups to be run across all runners.
+        ci_total_jobs: [12]
+        # Remember to update ci_node_index below to 0..N-1
+        # When you run 2 parallel jobs then first job will have index 0, the second job will have index 1 etc. For larger runners runners with more CPU adjust accordingly.
+        ci_job_index:
+          [
+            "[0, 1, 2, 3]",
+            "[4, 5, 6, 7]",
+            "[8, 9, 10, 11]",
+          ]
 
     steps:
       - uses: actions/checkout@v4
@@ -42,8 +61,9 @@ jobs:
         run: |
           sudo apt-get -yqq install libpq-dev
 
-      - name: Build App
+      - name: Setup Parallel Database
         env:
+          RAILS_ENV: test
           POSTGRES_HOST: localhost
           DATABASE_HOST: localhost
           POSTGRES_USER: postgres
@@ -52,32 +72,35 @@ jobs:
           POSTGRES_HOST_AUTH_METHOD: trust
           POSTGRES_PORT: 5432
         run: |
+          echo "setting up database"
+          bundle exec rake parallel:create
+          bundle exec rake parallel:rake[db:schema:load]
+          echo "done"
+
+      - name: Build App
+        run: |
           yarn
-          bundle exec rake db:create
-          bundle exec rake db:schema:load
           bundle exec rails css:build
           bundle exec rails javascript:build
 
-      - name: Run rspec and upload code coverage
+      - name: Run rspec group ${{ matrix.ci_job_index }}
         env:
+          RAILS_ENV: test
+          POSTGRES_HOST: localhost
           DATABASE_HOST: localhost
           POSTGRES_USER: postgres
           CASA_DATABASE_PASSWORD: password
+          POSTGRES_PASSWORD: password
           POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_PORT: 5432
           RUN_SIMPLECOV: true
           CC_TEST_REPORTER_ID: 31464536e34ab26588cb951d0fa6b5898abdf401dbe912fd47274df298e432ac
         run: |
-          curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
-          chmod +x ./cc-test-reporter
-          ./cc-test-reporter before-build
-          RUBYOPT='-W:no-deprecated -W:no-experimental' bundle exec rspec
-          ./cc-test-reporter after-build --exit-code $?
+          bundle exec parallel_rspec -n "${CI_TOTAL_JOBS}" --only-group "${CI_JOB_INDEX}" ./spec
 
-      - name: Archive selenium screenshots
+      - name: Upload Selenium Screenshots
         if: ${{ failure() }}
         uses: actions/upload-artifact@v4
         with:
-          name: selenium-screenshots
-          path: |
-            ${{ github.workspace }}/tmp/capybara/*.png
-            ${{ github.workspace }}/tmp/capybara/*.html
+          name: screenshots_${{ env.GROUPS_UNDERSCORE }}
+          path: ${{ github.workspace }}/tmp/screenshots${{ env.GROUPS_UNDERSCORE }}/

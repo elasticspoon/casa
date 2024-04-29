@@ -25,7 +25,7 @@ jobs:
         run: |
           az storage blob upload \
           -c $STORAGE_CONTAINER \
-          --file tmp/old_parallel_runtime.log \
+          --file parallel_runtime.log \
           -n parallel_runtime.log \
           --overwrite true
 

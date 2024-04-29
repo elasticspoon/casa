@@ -46,12 +46,9 @@ jobs:
           AZURE_STORAGE_ACCOUNT: ${{ secrets.ACCOUNT_NAME }}
           STORAGE_CONTAINER: ${{ secrets.STORAGE_CONTAINER }}
         run: |
-          echo ${{ secrets.STORAGE_CONTAINER }}
-          echo $STORAGE_CONTAINER
-
           az storage blob download \
           -c $STORAGE_CONTAINER \
-          --file tmp/old_parallel_runtime.log \
+          --file old_parallel_runtime.log \
           -n parallel_runtime.log
 
       - name: Set up Ruby
@@ -101,7 +98,7 @@ jobs:
           bundle exec parallel_rspec \
           -n "${CI_TOTAL_JOBS}" \
           --only-group "${CI_JOB_INDEX}" \
-          --runtime-log tmp/old_parallel_runtime.log ./spec || true
+          --runtime-log old_parallel_runtime.log ./spec || true
 
           cat tmp/spec_summary.log
 

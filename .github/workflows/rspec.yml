@@ -46,6 +46,9 @@ jobs:
           AZURE_STORAGE_ACCOUNT: ${{ secrets.ACCOUNT_NAME }}
           STORAGE_CONTAINER: ${{ secrets.STORAGE_CONTAINER }}
         run: |
+          echo ${{ secrets.STORAGE_CONTAINER }}
+          echo $STORAGE_CONTAINER
+
           az storage blob download \
           -c $STORAGE_CONTAINER \
           --file tmp/old_parallel_runtime.log \

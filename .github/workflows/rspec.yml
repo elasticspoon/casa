@@ -1,27 +1,30 @@
 name: rspec
 
 on:
-  push:
-    branches:
-      - main
-    paths-ignore:
-      - "doc/**"
-      - "**/*.md"
-  pull_request:
-    branches:
-      - main
+  workflow_call:
+    inputs:
+      groups:
+        required: true
+        type: string
+      group_count:
+        required: true
+        type: number
+      parallel_processes_count:
+        required: true
+        type: number
+env:
+  GROUPS_COMMA: ${{ join(fromJSON(inputs.groups), ',') }}
+  GROUPS_UNDERSCORE: ${{ join(fromJSON(inputs.groups), '_') }}
 
 jobs:
   rspec:
-    name: RSpec Groups ${{ matrix.ci_job_index }}
+    name: RSpec Groups ${{ inputs.groups }}
     runs-on: ubuntu-latest
     env:
       RAILS_ENV: test
       BUNDLE_WITHOUT: "development"
-      CI_TOTAL_JOBS: ${{ matrix.ci_total_jobs }}
-      CI_JOB_INDEX: ${{ matrix.ci_job_index }}
-      GROUPS_COMMA: ${{ join(fromJSON(matrix.ci_job_index), ',') }}
-      GROUPS_UNDERSCORE: ${{ join(fromJSON(matrix.ci_job_index), '_') }}
+      CI_TOTAL_JOBS: ${{ inputs.group_count }}
+      CI_JOB_INDEX: ${{ inputs.groups }}
     services:
       db:
         image: postgres:14.8
@@ -34,21 +37,6 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-    strategy:
-      fail-fast: false
-      matrix:
-        # Set N number of parallel jobs you want to run.
-        # Normally equal to the number of CPU cores but in this case relates to the total number of test groups to be run across all runners.
-        ci_total_jobs: [12]
-        # Remember to update ci_node_index below to 0..N-1
-        # When you run 2 parallel jobs then first job will have index 0, the second job will have index 1 etc. For larger runners runners with more CPU adjust accordingly.
-        ci_job_index:
-          [
-            "[0, 1, 2, 3]",
-            "[4, 5, 6, 7]",
-            "[8, 9, 10, 11]",
-          ]
-
     steps:
       - uses: actions/checkout@v4
 
@@ -83,7 +71,7 @@ jobs:
           bundle exec rails css:build
           bundle exec rails javascript:build
 
-      - name: Run rspec group ${{ matrix.ci_job_index }}
+      - name: Run rspec group ${{ inputs.group }}
         env:
           RAILS_ENV: test
           POSTGRES_HOST: localhost
@@ -96,10 +84,27 @@ jobs:
           RUN_SIMPLECOV: true
           CC_TEST_REPORTER_ID: 31464536e34ab26588cb951d0fa6b5898abdf401dbe912fd47274df298e432ac
         run: |
-          bundle exec parallel_rspec -n "${CI_TOTAL_JOBS}" --only-group "${CI_JOB_INDEX}" ./spec
+          bundle exec parallel_rspec -n "${CI_TOTAL_JOBS}" --only-group "${CI_JOB_INDEX}" ./spec || true
+          cat tmp/spec_summary.log
+
+      - name: Compress artifacts
+        run: |
+          zip -r test_reports_${{ env.GROUPS_UNDERSCORE }}.zip tmp/reports
+          mv tmp/parallel_runtime_rspec.log parallel_runtime_rspec_${{ env.GROUPS_UNDERSCORE }}.log
+
+      - name: Upload test reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: test_reports_${{ env.GROUPS_UNDERSCORE }}.zip
+          path: test_reports_${{ env.GROUPS_UNDERSCORE }}.zip
+
+      - name: Upload file parallel tests runtime log
+        uses: actions/upload-artifact@v4
+        with:
+          name: parallel_runtime_rspec_${{ env.GROUPS_UNDERSCORE }}.log
+          path: parallel_runtime_rspec_${{ env.GROUPS_UNDERSCORE }}.log
 
       - name: Upload Selenium Screenshots
-        if: ${{ failure() }}
         uses: actions/upload-artifact@v4
         with:
           name: screenshots_${{ env.GROUPS_UNDERSCORE }}

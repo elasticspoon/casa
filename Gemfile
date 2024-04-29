@@ -66,6 +66,7 @@ group :development, :test do
   gem "shoulda-matchers"
   gem "standard", "~> 1.31.0"
   gem "parallel_tests"
+  gem "rspec_junit_formatter"
 end
 
 group :development do

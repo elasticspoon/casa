@@ -105,7 +105,7 @@ jobs:
       - name: Compress artifacts
         run: |
           zip -r test_reports_${{ env.GROUPS_UNDERSCORE }}.zip tmp/reports
-          mv tmp/parallel_runtime_rspec.log parallel_runtime_rspec_${{ env.GROUPS_UNDERSCORE }}.log
+          mv tmp/parallel_runtime.log parallel_runtime_rspec_${{ env.GROUPS_UNDERSCORE }}.log
 
       - name: Upload test reports
         uses: actions/upload-artifact@v4

@@ -40,6 +40,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Download parallel runtime log from Azure Blob Storage
+        env:
+          AZURE_STORAGE_KEY: ${{ secrets.STORAGE_ACCESS_KEY }}
+          AZURE_STORAGE_ACCOUNT: ${{ secrets.ACCOUNT_NAME }}
+          STORAGE_CONTAINER: ${{ secrets.STORAGE_CONTAINER }}
+        run: |
+          az storage blob download \
+          -c $STORAGE_CONTAINER \
+          --file tmp/old_parallel_runtime.log \
+          -n parallel_runtime.log
+
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
@@ -84,7 +95,11 @@ jobs:
           RUN_SIMPLECOV: true
           CC_TEST_REPORTER_ID: 31464536e34ab26588cb951d0fa6b5898abdf401dbe912fd47274df298e432ac
         run: |
-          bundle exec parallel_rspec -n "${CI_TOTAL_JOBS}" --only-group "${CI_JOB_INDEX}" ./spec || true
+          bundle exec parallel_rspec \
+          -n "${CI_TOTAL_JOBS}" \
+          --only-group "${CI_JOB_INDEX}" \
+          --runtime-log tmp/old_parallel_runtime.log ./spec || true
+
           cat tmp/spec_summary.log
 
       - name: Compress artifacts
@@ -109,3 +124,4 @@ jobs:
         with:
           name: screenshots_${{ env.GROUPS_UNDERSCORE }}
           path: ${{ github.workspace }}/tmp/screenshots${{ env.GROUPS_UNDERSCORE }}/
+          if-no-files-found: ignore

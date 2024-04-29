@@ -17,6 +17,18 @@ jobs:
       - name: Merge parallel runtime log parts
         run: |
           cat artifacts/**/parallel_runtime_rspec*.log > parallel_runtime.log
+      - name: Upload log file to Azure Blob Storage
+        env:
+          AZURE_STORAGE_KEY: ${{ secrets.STORAGE_ACCESS_KEY }}
+          AZURE_STORAGE_ACCOUNT: ${{ secrets.ACCOUNT_NAME }}
+          STORAGE_CONTAINER: ${{ secrets.STORAGE_CONTAINER }}
+        run: |
+          az storage blob upload \
+          -c $STORAGE_CONTAINER \
+          --file tmp/old_parallel_runtime.log \
+          -n parallel_runtime.log \
+          --overwrite true
+
       - name: Test Summary
         id: test_summary
         uses: test-summary/action@v2

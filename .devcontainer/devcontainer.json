@@ -1,0 +1,18 @@
+{
+  "dockerComposeFile": "docker-compose.yml",
+  "forwardPorts": [3000, 5432],
+  "workspaceFolder": "/workspaces/casa",
+  "service": "app",
+  "customizations": {
+    "vscode": {
+      "extensions": ["Shopify.ruby-extensions-pack"],
+      "settings": {
+        "rubyLsp.rubyVersionManager": {
+          "identifier": "rvm"
+        }
+      }
+    }
+  },
+
+  "postCreateCommand": ".devcontainer/post-create.sh"
+}

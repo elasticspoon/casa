@@ -3,7 +3,7 @@ version: "3"
 services:
   web:
     build: .
-    command: bin/dev
+    # command: bin/dev
     ports:
       - "3000:3000"
       - "4000:4000"
@@ -16,9 +16,10 @@ services:
     depends_on:
       - database
     stdin_open: true
-    tty: true
-     # Overrides default command so things don't shut down after the process ends.
-    command: sleep infinity   
+    tty:
+      true
+      # Overrides default command so things don't shut down after the process ends.
+    command: sleep infinity
     platform: linux/x86_64
 
   database:
